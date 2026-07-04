@@ -130,6 +130,7 @@ export default function App() {
               text: data.message,
               timestamp: getCurrentTime(),
               isPromo: true,
+              promoPrice: data.promo_price,
             };
 
             setMessages((prev) => {

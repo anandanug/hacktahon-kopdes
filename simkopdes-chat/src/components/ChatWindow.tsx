@@ -173,7 +173,7 @@ export default function ChatWindow({
                           className="w-full bg-white border border-[#bccac2] text-primary font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-[0.98] cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
-                          <span>Beli Sekarang – Rp12.000/kg</span>
+                          <span>Beli Sekarang – Rp{msg.promoPrice ? msg.promoPrice.toLocaleString('id-ID') : "12.000"}/kg</span>
                         </button>
                       )}
                     </div>
