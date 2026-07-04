@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #006b53;
+  --color-primary-container: #00a884;
+  --color-on-primary-container: #003427;
+  --color-tertiary-fixed: #c9ecc3;
+  --color-surface-container-low: #f3f3f4;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #e2e2e2;
+  --color-on-surface-variant: #3d4a44;
+  --color-outline-variant: #bccac2;
+  --color-background-chat: #f0f1f1;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom Chat Pattern dotted background */
+.chat-pattern {
+  background-color: #f0f1f1;
+  background-image: radial-gradient(#d1d5db 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+/* Spinner Animation */
+.spinner {
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
+}
+
+/* Webkit Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #bccac2;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a3b5aa;
+}

@@ -1,0 +1,113 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Cooperative Theme Palette */
+  --color-brand-background: #F8FAFC;
+  --color-primary-coop: #006C49;
+  --color-primary-container-coop: #10B981;
+  --color-on-primary-container-coop: #00422B;
+  --color-surface-coop: #FAF8FF;
+  --color-on-surface-coop: #131B2E;
+  --color-surface-container-low-coop: #F2F3FF;
+  --color-surface-container-coop: #EAEDFF;
+  --color-surface-container-high-coop: #E2E7FF;
+  --color-surface-container-highest-coop: #DAE2FD;
+  --color-outline-coop: #6C7A71;
+  --color-outline-variant-coop: #BBCABF;
+
+  --color-tech-charcoal: #0F172A;
+  --color-tech-text: #94A3B8;
+  --color-tech-terminal: #0A0A0A;
+}
+
+@layer utilities {
+  .enterprise-card {
+    background-color: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  }
+  
+  .tech-console {
+    background-color: #0F172A;
+    color: #94A3B8;
+    border-radius: 0.5rem;
+    padding: 16px;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .status-badge-red {
+    background-color: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FCA5A5;
+  }
+
+  .status-badge-yellow {
+    background-color: #FFFBEB;
+    color: #92400E;
+    border: 1px solid #FCD34D;
+  }
+
+  .status-badge-green {
+    background-color: #F0FDF4;
+    color: #166534;
+    border: 1px solid #86EFAC;
+  }
+
+  .status-badge-blue {
+    background-color: #EFF6FF;
+    color: #1E40AF;
+    border: 1px solid #93C5FD;
+  }
+
+  .status-badge-purple {
+    background-color: #F5F3FF;
+    color: #6D28D9;
+    border: 1px solid #DDD6FE;
+  }
+
+  /* Custom Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+  }
+  .console-scroll::-webkit-scrollbar-track {
+    background: #0F172A;
+  }
+  .console-scroll::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+}
+
+body {
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

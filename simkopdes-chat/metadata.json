@@ -1,0 +1,6 @@
+{
+  "name": "Simkopdes Chat",
+  "description": "Interactive full-stack chat application for the Simkopdes Agricultural Cooperative with AI-powered assistants, status reports, product bookings, and catalog browsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
