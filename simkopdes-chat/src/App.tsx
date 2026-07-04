@@ -288,91 +288,108 @@ export default function App() {
   };
 
   // Dedicated transaction booking click handler for Beras Pandanwangi promo
-  const handleBeliPromo = async () => {
+  const handleBeliPromo = async (promoMsgId?: string) => {
     setIsBeliLoading(true);
 
-    setTimeout(async () => {
-      const activeId = "bot";
-      const timestamp = getCurrentTime();
+    const updatePromoStatus = (status: "idle" | "loading" | "success" | "error") => {
+      setMessages((prev) => {
+        const thread = prev.bot || [];
+        const msgIdToUpdate = promoMsgId || thread.slice().reverse().find(m => m.isPromo)?.id;
+        if (!msgIdToUpdate) return prev;
+        
+        return {
+          ...prev,
+          bot: thread.map((m) =>
+            m.id === msgIdToUpdate ? { ...m, promoStatus: status } : m
+          ),
+        };
+      });
+    };
 
-      // Append user outgoing message
-      const userMsgId = `m-${Date.now()}`;
-      const userMsg: Message = {
-        id: userMsgId,
-        sender: "user",
-        text: "Saya ingin membeli promo Beras Pandanwangi.",
-        timestamp,
-        status: "sent",
-      };
+    updatePromoStatus("loading");
 
-      setMessages((prev) => ({
-        ...prev,
-        bot: [...prev.bot, userMsg],
-      }));
+    const timestamp = getCurrentTime();
 
-      try {
-        // Post real booking row to server state
-        const res = await fetch("/api/whatsapp/book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            member_id: "mem-001",
-            product_id: "prod-001",
-            quantity: 1,
-          }),
-        });
+    // Append user outgoing message
+    const userMsgId = `m-${Date.now()}`;
+    const userMsg: Message = {
+      id: userMsgId,
+      sender: "user",
+      text: "Saya ingin membeli promo Beras Pandanwangi.",
+      timestamp,
+      status: "sent",
+    };
 
-        const bookingData = await res.json();
+    setMessages((prev) => ({
+      ...prev,
+      bot: [...prev.bot, userMsg],
+    }));
 
-        // Simulate double checks and append automated cooperative voucher
-        setTimeout(() => {
-          setMessages((prev) => {
-            const thread = prev.bot || [];
-            // Change single check to read check for the confirmation
-            const checkedThread = thread.map((m) =>
-              m.id === userMsgId ? { ...m, status: "read" as const } : m
-            );
+    try {
+      // Post real booking row to server state
+      const res = await fetch("/api/whatsapp/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: "mem-001",
+          product_id: "prod-001",
+          quantity: 1,
+        }),
+      });
 
-            const botReply: Message = {
-              id: `b-confirm-${Date.now()}`,
-              sender: "bot",
-              text: `✅ Terima kasih atas pesanan Anda. Pesanan sedang diproses oleh koperasi. Kode Booking: #BK-001. Silakan melakukan pembayaran atau mengambil barang sesuai instruksi petugas.`,
-              timestamp: getCurrentTime(),
-              bookingInfo: {
-                productName: "Beras Pandanwangi 5kg",
-                price: bookingData.unit_price || 60000,
-                bookingCode: bookingData.booking_code || "BK-001",
-                status: bookingData.status || "Confirmed",
-              },
-            };
+      if (!res.ok) throw new Error("API responded with an error");
+      const bookingData = await res.json();
 
-            return {
-              ...prev,
-              bot: [...checkedThread, botReply],
-            };
-          });
-
-          // Update sidebar preview
-          setContacts((prev) =>
-            prev.map((c) =>
-              c.id === "bot"
-                ? {
-                    ...c,
-                    lastMessage: "✅ Terima kasih atas pesanan...",
-                    lastMessageTime: getCurrentTime(),
-                  }
-                : c
-            )
+      // Simulate double checks and append automated cooperative voucher
+      setTimeout(() => {
+        setMessages((prev) => {
+          const thread = prev.bot || [];
+          // Change single check to read check for the confirmation
+          const checkedThread = thread.map((m) =>
+            m.id === userMsgId ? { ...m, status: "read" as const } : m
           );
 
-          setBookingsRefreshTrigger((prev) => prev + 1);
-        }, 800);
-      } catch (err) {
-        console.error("Booking failed:", err);
-      } finally {
+          const botReply: Message = {
+            id: `b-confirm-${Date.now()}`,
+            sender: "bot",
+            text: `✅ Terima kasih atas pesanan Anda. Pesanan sedang diproses oleh koperasi. Kode Booking: #${bookingData.booking?.booking_code || "BK-001"}. Silakan melakukan pembayaran atau mengambil barang sesuai instruksi petugas.`,
+            timestamp: getCurrentTime(),
+            bookingInfo: {
+              productName: bookingData.booking?.product_name || "Beras Pandanwangi 5kg",
+              price: bookingData.booking?.unit_price || 60000,
+              bookingCode: bookingData.booking?.booking_code || "BK-001",
+              status: bookingData.booking?.status || "Confirmed",
+            },
+          };
+
+          return {
+            ...prev,
+            bot: [...checkedThread, botReply],
+          };
+        });
+
+        // Update sidebar preview
+        setContacts((prev) =>
+          prev.map((c) =>
+            c.id === "bot"
+              ? {
+                  ...c,
+                  lastMessage: "✅ Terima kasih atas pesanan...",
+                  lastMessageTime: getCurrentTime(),
+                }
+              : c
+          )
+        );
+
+        setBookingsRefreshTrigger((prev) => prev + 1);
+        updatePromoStatus("success");
         setIsBeliLoading(false);
-      }
-    }, 800);
+      }, 500);
+    } catch (err) {
+      console.error("Booking failed:", err);
+      updatePromoStatus("error");
+      setIsBeliLoading(false);
+    }
   };
 
   // Catalog item purchase action
@@ -444,7 +461,7 @@ export default function App() {
         );
 
         setBookingsRefreshTrigger((prev) => prev + 1);
-      }, 1000);
+      }, 500);
     } catch (err) {
       console.error(err);
     }

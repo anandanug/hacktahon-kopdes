@@ -6,6 +6,7 @@ export interface Message {
   status?: "sent" | "delivered" | "read";
   isPromo?: boolean;
   promoPrice?: number;
+  promoStatus?: "idle" | "loading" | "success" | "error";
   bookingInfo?: {
     productName: string;
     price: number;

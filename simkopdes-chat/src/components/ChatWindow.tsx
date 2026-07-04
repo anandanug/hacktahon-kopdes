@@ -6,7 +6,7 @@ interface ChatWindowProps {
   contact: Contact;
   messages: Message[];
   onSendMessage: (text: string) => void;
-  onBeliPromo: () => void;
+  onBeliPromo: (id?: string) => void;
   isBeliLoading: boolean;
 }
 
@@ -158,7 +158,7 @@ export default function ChatWindow({
                   {/* Integrated Special Promotion Card */}
                   {msg.isPromo && (
                     <div className="border-t border-[#bccac2]/30 pt-3 mt-3 flex flex-col gap-2 relative">
-                      {isBeliLoading ? (
+                      {msg.promoStatus === "loading" || (isBeliLoading && !msg.promoStatus) ? (
                         <button 
                           disabled 
                           className="w-full bg-gray-50 border border-gray-200 text-primary py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold"
@@ -166,10 +166,26 @@ export default function ChatWindow({
                           <div className="w-4 h-4 spinner text-primary"></div>
                           <span>Memproses Booking...</span>
                         </button>
+                      ) : msg.promoStatus === "success" ? (
+                        <button 
+                          disabled 
+                          className="w-full bg-emerald-50 border border-emerald-200 text-emerald-600 font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                          <span>Berhasil Dipesan</span>
+                        </button>
+                      ) : msg.promoStatus === "error" ? (
+                        <button 
+                          disabled 
+                          className="w-full bg-red-50 border border-red-200 text-red-600 font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">error</span>
+                          <span>Booking Gagal</span>
+                        </button>
                       ) : (
                         <button 
                           id="beli-sekarang-btn"
-                          onClick={onBeliPromo}
+                          onClick={() => onBeliPromo(msg.id)}
                           className="w-full bg-white border border-[#bccac2] text-primary font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-[0.98] cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
