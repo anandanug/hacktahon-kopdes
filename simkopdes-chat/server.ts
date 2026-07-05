@@ -9,8 +9,6 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
-
 // Initialize Gemini API client safely (lazy-loaded or conditional on request)
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
@@ -59,7 +57,7 @@ const mockBookings: Booking[] = [
 // Mock Products Catalog
 const mockProducts = [
   {
-    id: "p-1",
+    id: "prod-001",
     name: "Beras Pandanwangi Premium",
     price: 14500,
     promoPrice: 12000,
@@ -71,7 +69,7 @@ const mockProducts = [
     isPromo: true,
   },
   {
-    id: "p-2",
+    id: "prod-006",
     name: "Pupuk Urea Subsidi",
     price: 112500,
     unit: "karung (50kg)",
@@ -82,7 +80,7 @@ const mockProducts = [
     isPromo: false,
   },
   {
-    id: "p-3",
+    id: "prod-007",
     name: "Pupuk NPK Phonska",
     price: 175000,
     unit: "karung (50kg)",
@@ -93,7 +91,7 @@ const mockProducts = [
     isPromo: false,
   },
   {
-    id: "p-4",
+    id: "prod-008",
     name: "Bibit Padi Unggul Ciherang",
     price: 65000,
     unit: "pack (5kg)",
@@ -193,7 +191,7 @@ app.get("/api/communities", (req, res) => {
 });
 
 // API: AI Assistant Chat Endpoint
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", express.json(), async (req, res) => {
   const { character, message, history } = req.body;
 
   if (!message) {

@@ -37,7 +37,7 @@ URGENCY_WEIGHT_DEMAND = 0.3           # Weight for inverse demand ratio
 
 # === Queue ===
 QUEUE_MAX_SIZE = 100                  # Maximum items in booking queue
-QUEUE_PROCESSING_DELAY = 0.5          # Simulated processing delay (seconds)
+QUEUE_PROCESSING_DELAY = 1.5          # Simulated processing delay (seconds)
 
 # === Idempotency ===
 IDEMPOTENCY_TTL_SECONDS = 300         # Idempotency key TTL (5 minutes)

@@ -2,6 +2,7 @@
 WhatsApp Mock Integration API
 Endpoints for the WhatsApp Mock UI to interact with the backend.
 """
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -175,6 +176,8 @@ async def get_product_catalog():
 async def whatsapp_direct_book(booking_req: WhatsAppBooking):
     """
     Direct booking from WhatsApp catalog (not from campaign reply).
+    Returns immediately after creating the booking record.
+    Queue processing (stock deduction) happens in the background.
 
     Request Body:
     {
@@ -198,7 +201,8 @@ async def whatsapp_direct_book(booking_req: WhatsAppBooking):
     if not booking:
         raise HTTPException(status_code=400, detail="Booking failed")
 
-    await booking_queue.enqueue(booking["id"])
+    # Fire-and-forget: enqueue in background so API returns instantly
+    asyncio.create_task(booking_queue.enqueue(booking["id"]))
 
     return {
         "success": True,

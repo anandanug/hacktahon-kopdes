@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import CommandCenterTab from './components/CommandCenterTab';
@@ -199,6 +199,143 @@ export default function App() {
     setLogs(prev => [...prev, newLog]);
   };
 
+  const productsRef = useRef(products);
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
+  // Real-time backend WS synchronization
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+
+    const connect = () => {
+      ws = new WebSocket("ws://localhost:8000/ws/dashboard");
+
+      ws.onopen = () => {
+        console.log('[Enterprise] Global Dashboard WS connected');
+        addLog('[SYSTEM] Sinkronisasi real-time terhubung ke backend.', 'success');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+
+          if (payload.event === 'booking_status_changed') {
+            const booking = payload.data;
+            if (!booking) return;
+
+            const bookingId = booking.id;
+            const productId = booking.product_id;
+            const productName = booking.product_name || 'Unknown';
+            const quantity = booking.quantity || 1;
+            const status = booking.status;
+            
+            const currentTime = new Date().toLocaleTimeString('id-ID', { hour12: false });
+
+            let displayStatus: 'Booking' | 'Processing' | 'Success' | 'Failed' = 'Booking';
+            if (status === 'Queued') displayStatus = 'Booking';
+            else if (status === 'Processing') displayStatus = 'Processing';
+            else if (status === 'Confirmed') displayStatus = 'Success';
+            else if (status === 'Failed' || status === 'Cancelled') displayStatus = 'Failed';
+
+            setBookings(prev => {
+              const exists = prev.some(b => b.id === bookingId);
+              if (exists) {
+                return prev.map(b => b.id === bookingId ? { ...b, status: displayStatus } : b);
+              } else {
+                return [
+                  {
+                    id: bookingId,
+                    time: currentTime,
+                    member: booking.member_name || 'Anggota',
+                    item: productName,
+                    qty: quantity,
+                    status: displayStatus
+                  },
+                  ...prev
+                ];
+              }
+            });
+
+            if (status === 'Queued') {
+              addLog(`FIFO Queue: Posisi antrean didapatkan untuk booking [${booking.booking_code || 'BK'}].`, 'info');
+            } else if (status === 'Processing') {
+              addLog(`PROCESSING: Memproses booking [${booking.booking_code || 'BK'}] - memverifikasi stok.`, 'info');
+            } else if (status === 'Confirmed') {
+              setProducts(prev => prev.map(p => {
+                if (p.id === productId) {
+                  const nextStock = Math.max(0, p.stock - quantity);
+                  return { ...p, stock: nextStock };
+                }
+                return p;
+              }));
+
+              const matchedProduct = productsRef.current.find(p => p.id === productId);
+              const unitValue = matchedProduct
+                ? Math.round(matchedProduct.sellingPrice * (1 - matchedProduct.discountAI / 100))
+                : booking.unit_price || booking.total_price || 0;
+
+              const debitEntry: LedgerEntry = {
+                id: `ledger-deb-${Date.now()}`,
+                time: currentTime,
+                keterangan: `Kas Koperasi (Penjualan ${productName})`,
+                debit: unitValue * quantity,
+                kredit: null
+              };
+              const creditEntry: LedgerEntry = {
+                id: `ledger-cred-${Date.now() + 1}`,
+                time: currentTime,
+                keterangan: `Persediaan ${productName}`,
+                debit: null,
+                kredit: unitValue * quantity
+              };
+              setLedger(prev => [debitEntry, creditEntry, ...prev]);
+
+              // Update sales records dynamically
+              const now = new Date();
+              const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+              const newSale: SalesRecord = {
+                id: booking.booking_code || `sale-${Date.now()}`,
+                date: dateStr,
+                productName: productName,
+                qty: quantity,
+                amount: unitValue * quantity,
+                memberName: booking.member_name || 'Anggota'
+              };
+              setSales(prev => [newSale, ...prev]);
+
+              addLog(`SUCCESS: Booking [${booking.booking_code || 'BK'}] terkonfirmasi. Stok berkurang. Jurnal umum disinkronkan.`, 'success');
+            } else if (status === 'Failed') {
+              addLog(`FAILED: Booking [${booking.booking_code || 'BK'}] gagal diproses - stok tidak tersedia atau konflik.`, 'error');
+            }
+          }
+        } catch (err) {
+          console.error("Error parsing WS message:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[Enterprise] Global Dashboard WS disconnected. Reconnecting in 3s...');
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {
+        if (ws) ws.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, []);
+
   // Deposit savings dispatcher (triggered from members screen)
   const handleRecordDeposit = (member: Member, amount: number, type: 'Wajib' | 'Sukarela') => {
     const now = new Date();
@@ -316,6 +453,7 @@ export default function App() {
               logs={logs} 
               setLogs={setLogs} 
               onOpenAiDialog={handleOpenProductForAi} 
+              queueCount={pendingQueueCount}
             />
           )}
 

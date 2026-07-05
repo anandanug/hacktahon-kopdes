@@ -17,7 +17,7 @@ export interface Booking {
   member: string;
   item: string;
   qty: number;
-  status: 'Booking' | 'Processing' | 'Success' | 'Cancelled';
+  status: 'Booking' | 'Processing' | 'Success' | 'Cancelled' | 'Failed';
 }
 
 export interface LedgerEntry {

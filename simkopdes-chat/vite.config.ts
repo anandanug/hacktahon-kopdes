@@ -20,7 +20,7 @@ export default defineConfig(() => {
       // Proxy API and WebSocket requests to FastAPI backend
       proxy: {
         '/api': {
-          target: 'http://localhost:8000',
+          target: 'http://127.0.0.1:8000',
           changeOrigin: true,
           // We only proxy requests that don't match the Express routes like /api/chat, /api/announcements etc.
           // Since Express runs before Vite, Express will handle those, and the rest will come here.

@@ -28,6 +28,7 @@ interface CommandCenterTabProps {
   logs: LogMessage[];
   setLogs: React.Dispatch<React.SetStateAction<LogMessage[]>>;
   onOpenAiDialog: (productName: string) => void;
+  queueCount: number;
 }
 
 export default function CommandCenterTab({
@@ -39,11 +40,11 @@ export default function CommandCenterTab({
   setLedger,
   logs,
   setLogs,
-  onOpenAiDialog
+  onOpenAiDialog,
+  queueCount
 }: CommandCenterTabProps) {
   // Console state
   const [activeReq, setActiveReq] = useState(0);
-  const [queueCount, setQueueCount] = useState(0);
   const [dupBlock, setDupBlock] = useState(0);
   const [customCmd, setCustomCmd] = useState('');
   
@@ -75,7 +76,8 @@ export default function CommandCenterTab({
     setLogs(prev => [...prev, newLog]);
   };
 
-  // Trigger Flash Sale Action (Exact replication with high-fidelity React state)
+  // Trigger Flash Sale Action — sends campaign blast only, NO stock/ledger change
+  // Stock and ledger are updated later via WebSocket when a real booking is confirmed from simkopdes-chat
   const triggerFlashSale = (product: Product) => {
     const now = Date.now();
     const lastClickTime = lastClickTimeRef.current;
@@ -96,84 +98,26 @@ export default function CommandCenterTab({
     lastClickTimeRef.current = now;
     isProcessingRef.current = true;
     setActiveReq(prev => prev + 1);
-    setQueueCount(prev => prev + 1);
 
     addLog(`API Gateway: Incoming request from WhatsApp Trigger for ${product.name}...`, 'info');
 
-    // TRIGGER REAL BACKEND:
+    // TRIGGER REAL BACKEND (campaign blast only — no stock deduction):
     fetch(`/api/campaigns/trigger-product/${product.id}`, { method: 'POST' }).catch(e => console.error(e));
-
-    const bookingId = `booking-${now}`;
-    const currentTime = new Date().toLocaleTimeString('id-ID', { hour12: false });
-
-    // Insert new booking with yellow "Booking" badge
-    const newBooking: Booking = {
-      id: bookingId,
-      time: currentTime,
-      member: 'Budi (Simulasi)',
-      item: product.name,
-      qty: 1,
-      status: 'Booking'
-    };
-
-    setBookings(prev => [newBooking, ...prev]);
 
     // Stage 1: Idempotency generation (500ms)
     setTimeout(() => {
       addLog(`Idempotency: Key Generated [IDEM-${now.toString().slice(-6)}]`, 'system');
     }, 500);
 
-    // Stage 2: FIFO Queue Assignment (1200ms)
+    // Stage 2: Campaign sent confirmation (1200ms)
     setTimeout(() => {
-      addLog(`FIFO Queue: Queue Position 1 assigned to ${product.name}.`, 'system');
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'Processing' } : b));
-    }, 1200);
-
-    // Stage 3: Process transaction success & sync ledger (2500ms)
-    setTimeout(() => {
-      // Mark booking as Success
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'Success' } : b));
-
-      // Calculate transaction totals based on product
-      const unitValue = Math.round(product.sellingPrice * (1 - product.discountAI / 100));
-      const displayValue = `Rp${(unitValue / 1000).toFixed(0)}k`;
-
-      // Update Stock (Decrement 1)
-      setProducts(prev => prev.map(p => {
-        if (p.id === product.id) {
-          const nextStock = Math.max(0, p.stock - 1);
-          return { ...p, stock: nextStock };
-        }
-        return p;
-      }));
-
-      // Add Debit Entry: Kas Koperasi
-      const debitEntry: LedgerEntry = {
-        id: `ledger-deb-${Date.now()}`,
-        time: currentTime,
-        keterangan: `Kas Koperasi (Penjualan ${product.name})`,
-        debit: unitValue,
-        kredit: null
-      };
-
-      // Add Credit Entry: Persediaan Barang
-      const creditEntry: LedgerEntry = {
-        id: `ledger-cred-${Date.now() + 1}`,
-        time: currentTime,
-        keterangan: `Persediaan ${product.name}`,
-        debit: null,
-        kredit: unitValue
-      };
-
-      setLedger(prev => [debitEntry, creditEntry, ...prev]);
-
-      addLog(`SUCCESS: Booking Completed for ${product.name}. Ledger synced.`, 'success');
-
-      setQueueCount(prev => Math.max(0, prev - 1));
+      addLog(`CAMPAIGN SENT: WhatsApp blast sent to 142 members for ${product.name}. Waiting for booking from member...`, 'success');
       setActiveReq(prev => Math.max(0, prev - 1));
       isProcessingRef.current = false;
-    }, 2500);
+    }, 1200);
   };
+
+
 
   // Custom CLI command processor
   const handleCommandSubmit = (e: React.FormEvent) => {

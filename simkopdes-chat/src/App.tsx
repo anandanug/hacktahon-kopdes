@@ -131,6 +131,8 @@ export default function App() {
               timestamp: getCurrentTime(),
               isPromo: true,
               promoPrice: data.promo_price,
+              productId: data.product_id,
+              productName: data.product_name,
             };
 
             setMessages((prev) => {
@@ -288,9 +290,8 @@ export default function App() {
   };
 
   // Dedicated transaction booking click handler for Beras Pandanwangi promo
+  // Uses OPTIMISTIC UI: shows invoice instantly, fires API in background
   const handleBeliPromo = async (promoMsgId?: string) => {
-    setIsBeliLoading(true);
-
     const updatePromoStatus = (status: "idle" | "loading" | "success" | "error") => {
       setMessages((prev) => {
         const thread = prev.bot || [];
@@ -306,90 +307,73 @@ export default function App() {
       });
     };
 
-    updatePromoStatus("loading");
-
     const timestamp = getCurrentTime();
 
-    // Append user outgoing message
+    // Generate optimistic booking code for instant display
+    const optimisticBookingCode = `BK-${Date.now().toString().slice(-6)}`;
+
+    // Find promo price from the message being clicked
+    const promoMsg = (messages.bot || []).find(m => m.id === promoMsgId && m.isPromo);
+    const displayPrice = promoMsg?.promoPrice || 12000;
+    const productId = promoMsg?.productId || "prod-001";
+    const productName = promoMsg?.productName || "Beras Pandanwangi 5kg";
+
+    // 1. Append user outgoing message
     const userMsgId = `m-${Date.now()}`;
     const userMsg: Message = {
       id: userMsgId,
       sender: "user",
-      text: "Saya ingin membeli promo Beras Pandanwangi.",
+      text: `Saya ingin membeli promo ${productName}.`,
       timestamp,
-      status: "sent",
+      status: "read",
     };
 
+    // 2. Create bot confirmation with invoice — shown INSTANTLY
+    const botReply: Message = {
+      id: `b-confirm-${Date.now()}`,
+      sender: "bot",
+      text: `✅ Terima kasih atas pesanan Anda. Pesanan sedang diproses oleh koperasi. Kode Booking: #${optimisticBookingCode}. Silakan melakukan pembayaran atau mengambil barang sesuai instruksi petugas.`,
+      timestamp: getCurrentTime(),
+      bookingInfo: {
+        productName: productName,
+        price: displayPrice,
+        bookingCode: optimisticBookingCode,
+        status: "Confirmed",
+      },
+    };
+
+    // 3. Update all state at once — instant transition
     setMessages((prev) => ({
       ...prev,
-      bot: [...prev.bot, userMsg],
+      bot: [...prev.bot, userMsg, botReply],
     }));
 
-    try {
-      // Post real booking row to server state
-      const res = await fetch("/api/whatsapp/book", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          member_id: "mem-001",
-          product_id: "prod-001",
-          quantity: 1,
-        }),
-      });
+    updatePromoStatus("success");
 
-      if (!res.ok) throw new Error("API responded with an error");
-      const bookingData = await res.json();
+    setContacts((prev) =>
+      prev.map((c) =>
+        c.id === "bot"
+          ? {
+              ...c,
+              lastMessage: "✅ Terima kasih atas pesanan...",
+              lastMessageTime: getCurrentTime(),
+            }
+          : c
+      )
+    );
 
-      // Simulate double checks and append automated cooperative voucher
-      setTimeout(() => {
-        setMessages((prev) => {
-          const thread = prev.bot || [];
-          // Change single check to read check for the confirmation
-          const checkedThread = thread.map((m) =>
-            m.id === userMsgId ? { ...m, status: "read" as const } : m
-          );
+    setBookingsRefreshTrigger((prev) => prev + 1);
 
-          const botReply: Message = {
-            id: `b-confirm-${Date.now()}`,
-            sender: "bot",
-            text: `✅ Terima kasih atas pesanan Anda. Pesanan sedang diproses oleh koperasi. Kode Booking: #${bookingData.booking?.booking_code || "BK-001"}. Silakan melakukan pembayaran atau mengambil barang sesuai instruksi petugas.`,
-            timestamp: getCurrentTime(),
-            bookingInfo: {
-              productName: bookingData.booking?.product_name || "Beras Pandanwangi 5kg",
-              price: bookingData.booking?.unit_price || 60000,
-              bookingCode: bookingData.booking?.booking_code || "BK-001",
-              status: bookingData.booking?.status || "Confirmed",
-            },
-          };
-
-          return {
-            ...prev,
-            bot: [...checkedThread, botReply],
-          };
-        });
-
-        // Update sidebar preview
-        setContacts((prev) =>
-          prev.map((c) =>
-            c.id === "bot"
-              ? {
-                  ...c,
-                  lastMessage: "✅ Terima kasih atas pesanan...",
-                  lastMessageTime: getCurrentTime(),
-                }
-              : c
-          )
-        );
-
-        setBookingsRefreshTrigger((prev) => prev + 1);
-        updatePromoStatus("success");
-        setIsBeliLoading(false);
-      }, 500);
-    } catch (err) {
-      console.error("Booking failed:", err);
-      updatePromoStatus("error");
-      setIsBeliLoading(false);
-    }
+    // 4. Fire API in background (fire-and-forget for demo)
+    fetch("/api/whatsapp/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        member_id: "mem-001",
+        product_id: productId,
+        quantity: 1,
+      }),
+    }).catch((err) => console.error("Background booking sync:", err));
   };
 
   // Catalog item purchase action
@@ -461,7 +445,7 @@ export default function App() {
         );
 
         setBookingsRefreshTrigger((prev) => prev + 1);
-      }, 500);
+      }, 1000);
     } catch (err) {
       console.error(err);
     }

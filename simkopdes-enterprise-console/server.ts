@@ -9,8 +9,6 @@ dotenv.config();
 const app = express();
 const PORT = 3001;
 
-app.use(express.json());
-
 // Lazy-initialize Gemini client
 let aiClient: GoogleGenAI | null = null;
 
@@ -37,7 +35,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // AI Chat Assistant endpoint for Cooperative Advice
-app.post("/api/ai/chat", async (req, res) => {
+app.post("/api/ai/chat", express.json(), async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "Messages array is required." });
@@ -92,7 +90,7 @@ Berikan rekomendasi yang praktis seperti penggunaan pesan otomatis WhatsApp untu
 });
 
 // AI Stagnant Inventory Optimizer
-app.post("/api/ai/analyze-stagnant", async (req, res) => {
+app.post("/api/ai/analyze-stagnant", express.json(), async (req, res) => {
   const { product, stagnatDays, stock, unitPrice, discount } = req.body;
 
   if (!product) {

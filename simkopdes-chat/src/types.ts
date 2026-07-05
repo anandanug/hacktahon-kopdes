@@ -7,6 +7,8 @@ export interface Message {
   isPromo?: boolean;
   promoPrice?: number;
   promoStatus?: "idle" | "loading" | "success" | "error";
+  productId?: string;
+  productName?: string;
   bookingInfo?: {
     productName: string;
     price: number;
