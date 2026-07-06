@@ -169,3 +169,35 @@ async def dashboard_run_engine():
         "message": "Engine analysis complete",
         "result": result,
     }
+
+
+@router.post("/reload-db")
+async def reload_db():
+    """
+    Reload database from seed.json, discarding current in-memory status and snapshot.
+    """
+    from app.core.config import SEED_FILE
+    import os
+    from app.core import config
+    
+    # Remove snapshot file to prevent loading old state on reboot
+    if config.DB_SNAPSHOT_FILE.exists():
+        try:
+            os.remove(config.DB_SNAPSHOT_FILE)
+        except Exception:
+            pass
+            
+    # Clear collections
+    for col in list(db._data.keys()):
+        db._data[col] = []
+        
+    # Re-initialize from seed
+    await db.initialize(seed_file=SEED_FILE)
+    stats = await db.get_stats()
+    
+    return {
+        "success": True,
+        "message": "Database reloaded from seed.json",
+        "database": stats
+    }
+

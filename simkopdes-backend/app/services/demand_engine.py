@@ -186,9 +186,12 @@ async def _generate_campaign(product: dict, urgency_score: float, discount: int)
     """Generate a flash sale campaign for a dead stock product."""
     promo_price = int(product["selling_price"] * (1 - discount / 100))
 
-    # Get all active members as campaign targets
-    members = await db.query("members", lambda m: m.get("active_status", False))
-    member_ids = [m["id"] for m in members]
+    # Get targeted active members
+    from app.services.campaign_service import get_targeted_members
+    targeting = await get_targeted_members(product)
+    member_ids = targeting["member_ids"]
+    target_count = targeting["count"]
+    segment_label = targeting["segment_label"]
 
     # Create WhatsApp-style message template
     message = (
@@ -213,7 +216,8 @@ async def _generate_campaign(product: dict, urgency_score: float, discount: int)
         "urgency_score": urgency_score,
         "message_template": message,
         "target_member_ids": member_ids,
-        "target_member_count": 142,  # Simulated segmentation targeting 142 members
+        "target_member_count": target_count,
+        "target_segment_label": segment_label,
         "status": "Pending",
         "bookings_generated": 0,
         "created_at": now_iso(),

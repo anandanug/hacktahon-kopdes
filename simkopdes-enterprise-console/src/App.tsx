@@ -204,6 +204,113 @@ export default function App() {
     productsRef.current = products;
   }, [products]);
 
+  // Fetch initial data from backend to sync with database on startup
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Fetch products
+        const prodRes = await fetch('/api/products');
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          const mappedProducts = prodData.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            stagnantDays: p.stagnant_days ?? 0,
+            stock: p.stock ?? 0,
+            unit: p.unit ?? 'Pcs',
+            purchasePrice: p.purchase_price ?? 0,
+            sellingPrice: p.selling_price ?? 0,
+            discountAI: p.discount_ai ?? 0,
+            priority: p.priority ?? 'Rendah'
+          }));
+          setProducts(mappedProducts);
+        }
+
+        // Fetch members
+        const memRes = await fetch('/api/members');
+        if (memRes.ok) {
+          const memData = await memRes.json();
+          const mappedMembers = memData.map((m: any) => ({
+            id: m.id,
+            name: m.name,
+            memberId: m.member_code,
+            savingsPokok: m.savings_pokok ?? 0,
+            savingsWajib: m.savings_wajib ?? 0,
+            savingsSukarela: m.savings_sukarela ?? 0,
+            activeStatus: m.active_status ?? false,
+            joinedDate: m.joined_date ?? ''
+          }));
+          setMembers(mappedMembers);
+        }
+
+        // Fetch bookings
+        const bookRes = await fetch('/api/bookings');
+        if (bookRes.ok) {
+          const bookData = await bookRes.json();
+          const mappedBookings = bookData.map((b: any) => {
+            let displayStatus: 'Booking' | 'Processing' | 'Success' | 'Failed' | 'Cancelled' = 'Booking';
+            if (b.status === 'Queued') displayStatus = 'Booking';
+            else if (b.status === 'Processing') displayStatus = 'Processing';
+            else if (b.status === 'Confirmed') displayStatus = 'Success';
+            else if (b.status === 'Failed') displayStatus = 'Failed';
+            else if (b.status === 'Cancelled') displayStatus = 'Failed';
+            
+            const timeStr = b.created_at ? new Date(b.created_at).toLocaleTimeString('id-ID', { hour12: false }) : '';
+            return {
+              id: b.id,
+              time: timeStr,
+              member: b.member_name || 'Anggota',
+              item: b.product_name,
+              qty: b.quantity,
+              status: displayStatus
+            };
+          });
+          setBookings(mappedBookings);
+        }
+
+        // Fetch ledger
+        const ledgerRes = await fetch('/api/ledger');
+        if (ledgerRes.ok) {
+          const ledgerData = await ledgerRes.json();
+          const mappedLedger = ledgerData.map((l: any) => {
+            const timeStr = l.timestamp ? new Date(l.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '';
+            return {
+              id: l.id,
+              time: timeStr,
+              keterangan: l.description,
+              debit: l.debit,
+              kredit: l.credit
+            };
+          });
+          setLedger(mappedLedger);
+        }
+
+        // Fetch sales (transaction logs)
+        const salesRes = await fetch('/api/transaction-logs');
+        if (salesRes.ok) {
+          const salesData = await salesRes.json();
+          const mappedSales = salesData.map((t: any) => {
+            const dateStr = t.timestamp ? new Date(t.timestamp).toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') : '';
+            return {
+              id: t.id,
+              date: dateStr,
+              productName: t.product_name,
+              qty: t.quantity,
+              amount: t.total_amount,
+              memberName: t.member_name || 'Anggota'
+            };
+          });
+          setSales(mappedSales.reverse());
+        }
+      } catch (err) {
+        console.error('Failed to fetch initial state from API:', err);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
   // Real-time backend WS synchronization
   useEffect(() => {
     let ws: WebSocket | null = null;

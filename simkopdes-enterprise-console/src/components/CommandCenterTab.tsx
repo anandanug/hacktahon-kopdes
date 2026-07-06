@@ -101,20 +101,37 @@ export default function CommandCenterTab({
 
     addLog(`API Gateway: Incoming request from WhatsApp Trigger for ${product.name}...`, 'info');
 
-    // TRIGGER REAL BACKEND (campaign blast only — no stock deduction):
-    fetch(`/api/campaigns/trigger-product/${product.id}`, { method: 'POST' }).catch(e => console.error(e));
-
     // Stage 1: Idempotency generation (500ms)
     setTimeout(() => {
       addLog(`Idempotency: Key Generated [IDEM-${now.toString().slice(-6)}]`, 'system');
     }, 500);
 
-    // Stage 2: Campaign sent confirmation (1200ms)
-    setTimeout(() => {
-      addLog(`CAMPAIGN SENT: WhatsApp blast sent to 142 members for ${product.name}. Waiting for booking from member...`, 'success');
-      setActiveReq(prev => Math.max(0, prev - 1));
-      isProcessingRef.current = false;
-    }, 1200);
+    // TRIGGER REAL BACKEND:
+    fetch(`/api/campaigns/trigger-product/${product.id}`, { method: 'POST' })
+      .then(res => {
+        if (!res.ok) throw new Error('API request failed');
+        return res.json();
+      })
+      .then(data => {
+        const campaign = data.campaign;
+        const count = campaign?.target_member_count ?? 0;
+        const label = campaign?.target_segment_label ?? 'Anggota Aktif';
+        
+        // Stage 2: Campaign sent confirmation (1200ms total delay)
+        setTimeout(() => {
+          addLog(`CAMPAIGN SENT: WhatsApp blast sent to ${count} ${label} for ${product.name}. Waiting for booking from member...`, 'success');
+          setActiveReq(prev => Math.max(0, prev - 1));
+          isProcessingRef.current = false;
+        }, 700);
+      })
+      .catch(err => {
+        console.error(err);
+        setTimeout(() => {
+          addLog(`SYSTEM ERROR: Failed to trigger WhatsApp blast for ${product.name}`, 'error');
+          setActiveReq(prev => Math.max(0, prev - 1));
+          isProcessingRef.current = false;
+        }, 700);
+      });
   };
 
 
